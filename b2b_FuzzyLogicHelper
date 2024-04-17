@@ -1,0 +1,44 @@
+public class b2b_FuzzyLogicHelper {
+	// Calculate the Levenshtein distance between two strings
+    public static Integer projectNameMatch(String s1, String s2) {
+        
+        Integer s1Length = s1.length();
+        Integer s2Length = s2.length();
+        
+        // Initialize the dp matrix
+        List<List<Integer>> dp = new List<List<Integer>>();
+        for (Integer i = 0; i <= s1Length; i++) {
+            List<Integer> row = new List<Integer>();
+            for (Integer j = 0; j <= s2Length; j++) {
+                row.add(0);
+            }
+            dp.add(row);
+        }
+
+        for (Integer i = 0; i <= s1Length; i++) {
+            dp[i][0] = i;
+        }
+
+        for (Integer j = 0; j <= s2Length; j++) {
+            dp[0][j] = j;
+        }
+
+        for (Integer i = 1; i <= s1Length; i++) {
+            for (Integer j = 1; j <= s2Length; j++) {
+                Integer cost = (s1.substring(i - 1, i) != s2.substring(j - 1, j)) ? 1 : 0;
+                dp[i][j] = Math.min(
+                    dp[i - 1][j] + 1,
+                    Math.min(dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+                );
+            }
+        }
+
+        return dp[s1Length][s2Length];
+    }
+
+    // Determine if two strings are a close match using Levenshtein distance
+    public static Boolean isCloseMatch(String s1, String s2, Integer threshold) {
+        Integer distance = projectNameMatch(s1, s2);
+        return distance <= threshold;
+    }
+}
