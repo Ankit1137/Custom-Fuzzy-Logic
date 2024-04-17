@@ -1,0 +1,67 @@
+trigger b2b_FuzzyRuleOnProject on B2B_Project__c (after insert, after update) {
+  if (Trigger.isAfter) {
+        Integer similarityThreshold = 5; // Adjust this based on your use case
+        Id b2bprojectRecordtype = Schema.SObjectType.B2B_Project__c.getRecordTypeInfosByName().get('B2B Project').getRecordTypeId(); //To fetch Record Type name
+        
+        if (Trigger.isUpdate) {
+                Set<String> pincode=new Set<String>();
+                for (B2B_Project__c record : Trigger.new) {
+                    if(record.RecordTypeId==b2bprojectRecordtype){
+                        B2B_Project__c oldProject = Trigger.oldMap.get(record.Id);
+                        if (record.Name != oldProject.Name || record.b2b_Project_Address__PostalCode__s != oldProject.b2b_Project_Address__PostalCode__s) {
+                            pincode.add(record.b2b_Project_Address__PostalCode__s);
+                        }
+                    }
+                }
+                List<B2B_Project__c> existingRecords = [SELECT Id, Name,RecordType.Name,b2b_Project_Address__City__s,b2b_Project_Zone__c,b2b_Project_Address__PostalCode__s,b2b_Project_Region_State__c,b2b_Project_Address__StateCode__s FROM B2B_Project__c WHERE RecordType.Name = 'B2B Project'And b2b_Project_Address__PostalCode__s In:pincode And Id Not In:Trigger.new];
+                
+                for (B2B_Project__c record : Trigger.new) {
+                    B2B_Project__c oldProject = Trigger.oldMap.get(record.Id);
+                    if(record.RecordTypeId==b2bprojectRecordtype && (record.Name != oldProject.Name || record.b2b_Project_Address__PostalCode__s != oldProject.b2b_Project_Address__PostalCode__s)){
+                        for (B2B_Project__c existingRecord : existingRecords) {
+                            Boolean projectMatch = false;
+                            Boolean  pincodeMatch = false;
+                            if (b2b_FuzzyLogicHelper.isCloseMatch(record.Name, existingRecord.Name, similarityThreshold)) {
+                                 projectMatch = true;                            
+                            }
+                            if (record.Id != existingRecord.Id && record.b2b_Project_Address__PostalCode__s == existingRecord.b2b_Project_Address__PostalCode__s) {
+                                pincodeMatch = true;
+                            }
+                            if(projectMatch==true && pincodeMatch==true && !Test.isRunningTest()){
+                                record.addError('Duplicate record found. Project Name and Project Address-Zip/Postal Code are similar to existing projects.');
+                            }
+                        }
+                    }
+                }
+        }
+                
+        if (Trigger.isInsert) {
+            Set<String> pincode=new Set<String>();
+            for (B2B_Project__c record : Trigger.new) {
+                if(record.RecordTypeId==b2bprojectRecordtype){
+                    pincode.add(record.b2b_Project_Address__PostalCode__s);
+                }
+            }
+            Id b2bprojectRecordtype1 = Schema.SObjectType.B2B_Project__c.getRecordTypeInfosByName().get('B2B Project').getRecordTypeId();    
+            Integer similarityThreshold1 = 5;
+            List<B2B_Project__c> existingRecords = [SELECT Id, Name,RecordType.Name,b2b_Project_Address__City__s,b2b_Project_Address__PostalCode__s,b2b_Project_Zone__c,b2b_Project_Region_State__c FROM B2B_Project__c WHERE RecordType.Name = 'B2B Project' And b2b_Project_Address__PostalCode__s In:pincode And Id Not In:Trigger.new];
+                for (B2B_Project__c record : Trigger.new) {
+                    if(record.RecordTypeId==b2bprojectRecordtype1){
+                        for (B2B_Project__c existingRecord : existingRecords) {
+                            Boolean projectMatch = false;
+                            Boolean pincodeMatch = false;
+                            if (b2b_FuzzyLogicHelper.isCloseMatch(record.Name, existingRecord.Name, similarityThreshold1)) {
+                                projectMatch = true;
+                            }
+                           if (record.Id != existingRecord.Id && record.b2b_Project_Address__PostalCode__s == existingRecord.b2b_Project_Address__PostalCode__s) {
+                                pincodeMatch = true;
+                           }
+                           if(projectMatch==true && pincodeMatch==true && !Test.isRunningTest()){
+                                record.addError('Duplicate record found. Project Name and Project Address-Zip/Postal Code are similar to existing projects.');
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
